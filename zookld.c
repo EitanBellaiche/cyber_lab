@@ -53,8 +53,22 @@ pid_t start_service(const char *username, char *const argv[])
 
 int main(int argc, char **argv)
 {
+    const char *zookd_prog = "./zookd-exstack";
+
     if (geteuid() != 0) {
         fprintf(stderr, "Must run zookld as root (sudo ./zookld)\n");
+        return 1;
+    }
+
+    if (argc == 2) {
+        if (strcmp(argv[1], "--vulnerable") == 0) {
+            zookd_prog = "./zookd-vulnerable-exstack";
+        } else if (strcmp(argv[1], "--fixed") != 0) {
+            fprintf(stderr, "Usage: sudo ./zookld [--fixed|--vulnerable]\n");
+            return 1;
+        }
+    } else if (argc > 2) {
+        fprintf(stderr, "Usage: sudo ./zookld [--fixed|--vulnerable]\n");
         return 1;
     }
 
@@ -65,7 +79,7 @@ int main(int argc, char **argv)
     }
 
     char *zookd_argv[] = {
-        "./zookd-exstack",
+        (char *) zookd_prog,
         "8080",
         NULL
     };
@@ -91,7 +105,7 @@ int main(int argc, char **argv)
     pid_t bpid   = start_service("bankuser",  bank_argv);
 
     printf("zookld: all services started.\n");
-    printf("  zookd-exstack pid = %d (user zookduser)\n", zpid);
+    printf("  %s pid = %d (user zookduser)\n", zookd_prog, zpid);
     printf("  auth-server   pid = %d (user authuser)\n",  apid);
     printf("  bank-server   pid = %d (user bankuser)\n",  bpid);
 

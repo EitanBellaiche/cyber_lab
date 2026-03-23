@@ -1,0 +1,26 @@
+zookd Denial of Service
+
+Attack file: zookd-dos.py
+
+How the attack works:
+1. `zookd` accepts a client connection and immediately forks.
+2. The parent process then calls `wait()` and does not continue accepting other clients until the child finishes.
+3. The child process reads the HTTP request line and headers one byte at a time.
+4. There is no timeout for incomplete requests.
+5. The attacker opens a connection and sends only a partial request very slowly.
+6. The child remains busy waiting for the rest of the headers, while the parent waits for that child.
+7. As a result, other users are delayed or blocked from being served.
+
+Why this is possible in this codebase:
+- `zookd.c` forks once per client and then waits synchronously for the child.
+- `http.c` reads request data without any timeout or request deadline.
+
+How to demonstrate:
+1. Start the server normally.
+2. Run: `python3 zookd-dos.py localhost 8080`
+3. While the script keeps the connection half-open, try to access the site from another browser or terminal.
+4. The second request should hang or become noticeably delayed.
+
+Relevant vulnerable files:
+- `zookd.c`
+- `http.c`

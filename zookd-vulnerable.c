@@ -10,33 +10,20 @@
 #include <unistd.h>
 
 #include <netdb.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/param.h>
-#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
-#define CLIENT_RECV_TIMEOUT_SECS 3
 
 static void process_client(int);
 static int run_server(const char *portstr);
 static int start_server(const char *portstr);
-static void reap_children(int sig);
 
 int main(int argc, char **argv)
 {
-    struct sigaction sa = {0};
-
     if (argc != 2)
         errx(1, "Wrong arguments");
-
-    sa.sa_handler = reap_children;
-    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGCHLD, &sa, NULL) < 0)
-        err(1, "sigaction");
 
     run_server(argv[1]);
 }
@@ -76,12 +63,10 @@ static int run_server(const char *port) {
     {
 	int cltfd = accept(sockfd, NULL, NULL);
 	int pid;
+	int status;
 
-	if (cltfd < 0) {
-	    if (errno == EINTR)
-		continue;
+	if (cltfd < 0)
 	    err(1, "accept");
-	}
 
 	/* fork a new process for each client process, because the process
 	 * builds up state specific for a client (e.g. cookie and other
@@ -101,27 +86,14 @@ static int run_server(const char *port) {
 
 	default:
 	    close(cltfd);
+	    pid = wait(&status);
+	    if (WIFSIGNALED(status)) {
+		printf("Child process %d terminated incorrectly, receiving signal %d\n",
+		       pid, WTERMSIG(status));
+	    }
 	    break;
 	}
     }
-}
-
-static void reap_children(int sig)
-{
-    int saved_errno = errno;
-    int status;
-    pid_t pid;
-
-    (void) sig;
-
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        if (WIFSIGNALED(status)) {
-            printf("Child process %d terminated incorrectly, receiving signal %d\n",
-                   pid, WTERMSIG(status));
-        }
-    }
-
-    errno = saved_errno;
 }
 
 static void process_client(int fd)
@@ -130,12 +102,6 @@ static void process_client(int fd)
     static size_t env_len = 8192;
     char reqpath[4096];
     const char *errmsg;
-    struct timeval timeout = {CLIENT_RECV_TIMEOUT_SECS, 0};
-
-    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-        close(fd);
-        err(1, "setsockopt(SO_RCVTIMEO)");
-    }
 
     /* get the request line */
     if ((errmsg = http_request_line(fd, reqpath, env, &env_len)))

@@ -4,10 +4,13 @@ LDFLAGS := -m64
 LDLIBS  := 
 
 PROGS   := zookd \
+           zookd-vulnerable \
            zookd-exstack \
+           zookd-vulnerable-exstack \
            zookd-nxstack \
            zookd-withssp \
-           shellcode.bin run-shellcode
+           shellcode.bin run-shellcode \
+           zookld
 
 ifeq ($(wildcard /usr/bin/execstack),)
   ifneq ($(wildcard /usr/sbin/execstack),)
@@ -22,12 +25,16 @@ all: $(PROGS)
 
 	
 zookd: %: %.o http.o
+zookd-vulnerable: %: %.o http.o
 zookd-exstack: %-exstack: %.o http.o
+	$(CC) $(LDFLAGS) $^ $(LOADLIBES) $(LDLIBS) -o $@ -z execstack
+zookd-vulnerable-exstack: %-exstack: %.o http.o
 	$(CC) $(LDFLAGS) $^ $(LOADLIBES) $(LDLIBS) -o $@ -z execstack
 zookd-nxstack: %-nxstack: %.o http.o
 	$(CC) $(LDFLAGS) $^ $(LOADLIBES) $(LDLIBS) -o $@
 zookd-withssp: %: %.o http-withssp.o
 run-shellcode: %: %.o
+zookld: %: %.o
 
 %.o: %.c
 	$(CC) $< -c -o $@ $(CFLAGS) -fno-stack-protector

@@ -1,0 +1,22 @@
+zookd DoS Defense
+
+Goal:
+Prevent a single slow client from blocking the main server and denying service to other users.
+
+What was fixed:
+1. The parent process no longer waits synchronously for each child after `fork()`.
+2. Child processes are reaped asynchronously using a `SIGCHLD` handler with `waitpid(..., WNOHANG)`.
+3. A receive timeout was added to each client socket using `SO_RCVTIMEO`.
+
+Why this blocks the attack:
+- Before the fix, one slow connection could keep a child process alive while the parent was blocked in `wait()`.
+- That prevented the server from accepting new clients.
+- After the fix, the parent immediately returns to `accept()` and continues serving other users.
+- If an attacker keeps a request incomplete for too long, the socket read times out and the request is dropped.
+
+Relevant fixed file:
+- `zookd.c`
+
+Security impact:
+- Mitigates application-layer DoS based on slow or incomplete HTTP requests.
+- Improves availability without changing the normal application behavior.
