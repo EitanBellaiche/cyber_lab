@@ -1,0 +1,38 @@
+נפעיל את השרת הראשון (לא לשכוח להכנס ל venv) : 
+
+sudo -u zookduser ./zookd-exstack 8080
+  
+
+נפעיל את השרת השני:
+
+sudo -u authuser ./venv/bin/python zoobar/auth-server.py dummy /authsvc/sock
+  
+
+
+נפעיל את השרת השלישי:
+
+ sudo -u bankuser ./venv/bin/python zoobar/bank-server.py dummy /banksvc/sock
+
+
+
+נראה שרצים 3 תהליכים שונים ו3 משתמשים שונים : 
+
+venv) eitanbellaiche@eitanbellaiche:~/Desktop/Shenkar/cyberSecurity/lab$ ps aux | egrep 'auth-server.py|bank-server.py|zookd-exstack'
+
+
+נראה שהמערכת עובדת כרגיל.
+
+
+נריץ את המתקפה כדי להראות שזה לא נמחק(זה לא יימחק כי אין למשתמש בכלל גישה לתיקייה):
+
+./exploit-2 localhost 8080
+
+
+מה עשינו בעצם ? 
+
+
+
+בעצם לקחת את המערכת ולהפריד אותה כך שכל חלק מטפל בתחומו עם ההרשאות שלו. קודם כול, חילקתם את המערכת לכמה שירותים נפרדים: שירות אחד שאחראי על אימות (auth-service), שירות אחד שאחראי על פעולות בנקאיות (bank-service), ומנגנון מרכזי שמנתב את הבקשות (zookd).
+כל אחד מהשירותים האלה רץ תחת משתמש לינוקס אחר עם הרשאות מוגדרות, ובסביבה מבודדת (chroot jail). כך גם אם אחד השירותים נפרץ, הוא לא יכול להגיע לנתונים הרגישים של השירותים האחרים
+
+

