@@ -6,7 +6,11 @@ from zoodb import *
 
 import auth_client as auth   # מדבר עם auth-server.py דרך RPC
 import bank_client as bank
-import random
+import os
+import secrets
+
+LOGIN_COOKIE_NAME = "PyZoobarLogin"
+CSRF_COOKIE_NAME = "PyZoobarCSRF"
 
 
 class User(object):
@@ -91,13 +95,64 @@ class User(object):
         self.zoobars = bank.balance(username)
 
 
+def _new_csrf_token():
+    return secrets.token_hex(16)
+
+
+def require_tls():
+    return os.environ.get("ZOOBAR_REQUIRE_TLS") == "1"
+
+
+def csrf_protection_enabled():
+    return os.environ.get("ZOOBAR_DISABLE_CSRF") != "1"
+
+
+def cookie_security_kwargs():
+    return {
+        'samesite': 'Lax',
+        'secure': require_tls(),
+    }
+
+
+def csrf_token():
+    token = getattr(g, 'csrf_token', None)
+    if token:
+        return token
+
+    token = request.cookies.get(CSRF_COOKIE_NAME)
+    if not token:
+        token = _new_csrf_token()
+        g.csrf_cookie_needs_set = True
+
+    g.csrf_token = token
+    return token
+
+
+def set_csrf_cookie(response):
+    token = getattr(g, 'csrf_token', None)
+    if token:
+        response.set_cookie(CSRF_COOKIE_NAME, token, **cookie_security_kwargs())
+    return response
+
+
+def csrf_protect():
+    if not csrf_protection_enabled():
+        return True
+
+    form_token = request.form.get('csrf_token')
+    cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
+
+    return bool(form_token and cookie_token and form_token == cookie_token)
+
+
 def logged_in():
     """
     בודק האם המשתמש מחובר לפי ה-cookie.
     """
     g.user = User()
-    g.user.checkCookie(request.cookies.get("PyZoobarLogin"))
+    g.user.checkCookie(request.cookies.get(LOGIN_COOKIE_NAME))
     if g.user.person:
+        csrf_token()
         return True
     else:
         return False
@@ -107,6 +162,8 @@ def requirelogin(page):
     @wraps(page)
     def loginhelper(*args, **kwargs):
         if not logged_in():
+            if request.method == 'POST' and csrf_protection_enabled():
+                return ("Forbidden", 403)
             return redirect(url_for('login') + "?nexturl=" + request.url)
         else:
             return page(*args, **kwargs)
@@ -148,7 +205,9 @@ def login():
         ## Be careful not to include semicolons in cookie value; see
         ## https://github.com/mitsuhiko/werkzeug/issues/226 for more
         ## details.
-        response.set_cookie('PyZoobarLogin', cookie)
+        response.set_cookie(LOGIN_COOKIE_NAME, cookie, **cookie_security_kwargs())
+        g.csrf_token = _new_csrf_token()
+        set_csrf_cookie(response)
         return response
 
     return render_template('login.html',
@@ -162,5 +221,6 @@ def logout():
     if logged_in():
         g.user.logout()
     response = redirect(url_for('login'))
-    response.set_cookie('PyZoobarLogin', '')
+    response.set_cookie(LOGIN_COOKIE_NAME, '', **cookie_security_kwargs())
+    response.set_cookie(CSRF_COOKIE_NAME, '', **cookie_security_kwargs())
     return response

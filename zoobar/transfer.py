@@ -1,6 +1,6 @@
 from flask import g, render_template, request
 
-from login import requirelogin
+from login import csrf_protect, csrf_token, requirelogin
 from zoodb import *
 from debug import *
 import bank_client as bank
@@ -12,6 +12,8 @@ def transfer():
     warning = None
     try:
         if 'recipient' in request.form:
+            if not csrf_protect():
+                return ("Forbidden", 403)
             zoobars_str = request.form['zoobars']
             zoobars = int(zoobars_str)  # המרה למספר
 
@@ -27,4 +29,4 @@ def transfer():
         traceback.print_exc()
         warning = "Transfer to %s failed" % request.form.get('recipient', '(unknown)')
 
-    return render_template('transfer.html', warning=warning)
+    return render_template('transfer.html', warning=warning, csrf_token=csrf_token())

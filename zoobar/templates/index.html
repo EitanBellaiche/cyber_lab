@@ -7,6 +7,7 @@
 <center>
 <b>Your profile:</b>
 <form method="POST" name="profileform">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <textarea name="profile_update" rows="20" cols="80">{{ person.profile }}</textarea>
     <br />
     <input type="submit" name="profile_submit" value="Save" />

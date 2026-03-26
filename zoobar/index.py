@@ -1,5 +1,5 @@
 from flask import g, render_template, request
-from login import requirelogin
+from login import csrf_protect, csrf_token, requirelogin
 from debug import *
 from zoodb import *
 
@@ -7,6 +7,8 @@ from zoodb import *
 @requirelogin
 def index():
     if 'profile_update' in request.form:
+        if not csrf_protect():
+            return ("Forbidden", 403)
         persondb = person_setup()
         person = persondb.query(Person).get(g.user.person.username)
         person.profile = request.form['profile_update']
@@ -14,4 +16,4 @@ def index():
 
         ## also update the cached version (see login.py)
         g.user.person.profile = person.profile
-    return render_template('index.html')
+    return render_template('index.html', csrf_token=csrf_token())
