@@ -1,0 +1,35 @@
+# OS/editor noise
+.DS_Store
+.vimrc
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Local secrets and TLS material
+*.key
+*.crt
+*.pem
+tls/
+
+# Local runtime data
+*.db
+zoobar/db/
+env/
+
+# Build artifacts
+*.o
+*.out
+
+# Common locally built binaries in this lab
+zookd
+zookd-exstack
+zookd-nxstack
+zookd-vulnerable
+zookd-vulnerable-exstack
+zookd-withssp
+zookld
+run-shellcode
+shellcode.bin
